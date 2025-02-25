@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prebuild": "prisma generate",
+    "postinstall": "prisma generate",
     "pgen": "prisma generate",
     "pmigrate": "prisma migrate dev",
     "dev": "next dev",
@@ -52,7 +52,8 @@
     "sort-by": "^1.2.0",
     "uplot": "^1.6.31",
     "uplot-react": "^1.2.2",
-    "yahoo-finance2": "^2.12.3"
+    "yahoo-finance2": "^2.12.3",
+    "prisma": "^5.12.1"
   },
   "devDependencies": {
     "@types/autosuggest-highlight": "^3.2.3",
@@ -65,7 +66,6 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.1.4",
-    "prisma": "^5.12.1",
     "typescript": "^5"
   }
 }

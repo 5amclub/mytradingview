@@ -6,7 +6,7 @@ import { getColorPallete } from "@/lib/color";
 import { humanAbsCurrencyFormatter } from "@/lib/formatters";
 import { calculateChartHeight, calculateLeftMargin } from "@/lib/utils";
 const ghUrl = process.env.GH_REPO_URL || 'github.com/mnsrulz/mytradingview';
-type OptionsDatasetType = "dex" | "gex" | "oi" | "volume"
+type OptionsDatasetType = "dex" | "gex" | "oi" | "volume" | "dexgex" | "oivolume"
 interface IExpo {
     data: OptionsHedgingData,
     exposure: OptionsDatasetType,
@@ -21,7 +21,9 @@ export const typeMap = {
     'DEX': 'dex' as OptionsDatasetType,
     'GEX': 'gex' as OptionsDatasetType,
     'OI': 'oi' as OptionsDatasetType,
-    'VOLUME': 'volume' as OptionsDatasetType
+    'VOLUME': 'volume' as OptionsDatasetType,
+    'DEXGEX': 'dexgex' as OptionsDatasetType,
+    'OIVOLUME': 'oivolume' as OptionsDatasetType
 }
 
 const xAxixFormatter = (datasetType: OptionsDatasetType, v: number) => {
@@ -69,6 +71,16 @@ export const Expo = (props: IExpo) => {
             case 'volume':
                 return {
                     gammaOrDelta: 'Volume',
+                    ds: data.volumeDataset
+                }
+            case 'dexgex':
+                return {
+                    gammaOrDelta: 'Dex / Gex',
+                    ds: data.volumeDataset
+                }
+            case 'oivolume':
+                return {
+                    gammaOrDelta: 'OI / Volume',
                     ds: data.volumeDataset
                 }
         }

@@ -19,7 +19,9 @@ const GreeksChartLabelMapping = {
     'DEX': 'ABS Delta Exposure',
     'GEX': 'NET Gamma Exposure',
     'OI': 'Open interest',
-    'VOLUME': 'Volume'
+    'VOLUME': 'Volume',
+    'DEXGEX': 'DEXGEX',
+    'OIVOLUME': 'OIVOLUME'
 }
 
 const EmaIndicatorLine = (props: { strikes: number[], emaData?: { ema21d: number, ema9d: number } }) => {

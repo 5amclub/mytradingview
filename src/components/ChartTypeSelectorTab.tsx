@@ -16,6 +16,18 @@ export const ChartTypeSelectorTab = (props: { tab: DexGexType; onChange: (v: Dex
     </Tabs>
 }
 
+export const ChartTypeSelectorTab2 = (props: { tab: DexGexType; onChange: (v: DexGexType) => void }) => {
+    return <Tabs
+        value={props.tab}
+        onChange={(e, v) => { props.onChange(v) }}
+        indicatorColor="secondary"
+        textColor="inherit"
+        variant="fullWidth">
+        <Tab label="Dex / Gex" value={'DEXGEX'}></Tab>
+        <Tab label="OI / Volume" value={'OIVOLUME'}></Tab>
+    </Tabs>
+}
+
 const dteOptions = [7, 
     30,
     50,

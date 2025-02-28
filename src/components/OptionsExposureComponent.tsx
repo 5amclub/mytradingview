@@ -1,15 +1,74 @@
 'use client';
 import { useOptionExposure } from "@/lib/hooks";
-import { Box, Container, LinearProgress, Paper, Slider, Stack, Typography } from "@mui/material";
-import dayjs from "dayjs";
-import { useMemo, useState } from "react";
-import PlayIcon from '@mui/icons-material/PlayArrow';
-import { IconButton } from "@mui/material";
-import { ChartTypeSelectorTab, DteStrikeSelector } from "./ChartTypeSelectorTab";
 import { DataModeType, DexGexType } from "@/lib/types";
+import { Box, Container, LinearProgress, Paper, Slider, Stack } from "@mui/material";
+import dayjs from "dayjs";
 import { parseAsInteger, parseAsStringEnum, useQueryState } from "nuqs";
+import { useMemo, useState } from "react";
+import { ChartTypeSelectorTab, ChartTypeSelectorTab2, DteStrikeSelector } from "./ChartTypeSelectorTab";
 import { GreeksExposureChart } from "./GreeksExposureChart";
 import { UpdateFrequencyDisclaimer } from "./UpdateFrequencyDisclaimer";
+
+export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: string[] }) => {
+    const { symbol, cachedDates } = props;
+    const [historicalDate, setHistoricalDate] = useState(cachedDates.at(-1) || '');
+    const [dte, setDte] = useQueryState('dte', parseAsInteger.withDefault(50));
+    const [strikeCounts, setStrikesCount] = useQueryState('sc', parseAsInteger.withDefault(30));
+    const [exposureTab, setexposureTab] = useQueryState<DexGexType>('tab', parseAsStringEnum<DexGexType>(Object.values(DexGexType)).withDefault(DexGexType.DEXGEX));
+    const [dataMode, setDataMode] = useQueryState<DataModeType>('mode', parseAsStringEnum<DataModeType>(Object.values(DataModeType)).withDefault(DataModeType.CBOE));
+    const { exposureData: exposureDataDex, isLoaded: isLoadedDex, hasError: hasErrorDex } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.DEX, dataMode, historicalDate);
+    const { exposureData: exposureDataGex, isLoaded: isLoadedGex, hasError: hasErrorGex } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.GEX, dataMode, historicalDate);
+    const { exposureData: exposureDataOI, isLoaded: isLoadedOI, hasError: hasErrorOI } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.OI, dataMode, historicalDate);
+    const { exposureData: exposureDataVolume, isLoaded: isLoadedVolume, hasError: hasErrorVolume } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.VOLUME, dataMode, historicalDate);
+
+    if (!exposureDataDex || !exposureDataGex || !exposureDataOI || !exposureDataVolume) return <LinearProgress />;
+
+    const startHistoricalAnimation = async () => {
+        const delayMs = 1000;
+        for (const d of cachedDates) {
+            setTimeout(() => {
+                setHistoricalDate(d);
+            }, delayMs);
+            await new Promise((r) => setTimeout(r, delayMs));
+        }
+    }
+
+    return <Container maxWidth="xl" sx={{ p: 0 }}>
+        <DteStrikeSelector dte={dte} strikeCounts={strikeCounts} setDte={setDte} setStrikesCount={setStrikesCount} symbol={symbol} dataMode={dataMode} setDataMode={setDataMode} hasHistoricalData={cachedDates.length > 0} />
+        <Paper sx={{ mt: 2 }}>
+            <ChartTypeSelectorTab2 tab={exposureTab} onChange={setexposureTab} />
+            {exposureTab == DexGexType.DEXGEX &&
+                <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
+                    <Box sx={{ m: 1, width: '100%' }}>
+                        {hasErrorDex ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataDex} dte={dte} symbol={symbol} exposureType={DexGexType.DEX} isLoaded={isLoadedDex} />}
+                    </Box>
+                    <Box sx={{ m: 1, width: '100%' }}>
+                        {hasErrorGex ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataGex} dte={dte} symbol={symbol} exposureType={DexGexType.GEX} isLoaded={isLoadedGex} />}
+                    </Box>
+                </Stack>
+            }
+
+            {exposureTab == DexGexType.OIVOLUME &&
+                <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
+                    <Box sx={{ m: 1, width: '100%' }}>
+                        {hasErrorOI ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataOI} dte={dte} symbol={symbol} exposureType={DexGexType.OI} isLoaded={isLoadedOI} />}
+                    </Box>
+                    <Box sx={{ m: 1, width: '100%' }}>
+                        {hasErrorVolume ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataVolume} dte={dte} symbol={symbol} exposureType={DexGexType.VOLUME} isLoaded={isLoadedVolume} />}
+                    </Box>
+                </Stack>
+            }
+        </Paper>
+        {dataMode == DataModeType.HISTORICAL && <Paper sx={{ px: 4 }}>
+            <HistoricalDateSlider dates={cachedDates} onChange={(v) => setHistoricalDate(v)} currentValue={historicalDate} />
+            {/* <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
+            </Stack> */}
+            {/* <IconButton onClick={startHistoricalAnimation}><PlayIcon /></IconButton> */}
+        </Paper>
+        }
+        <UpdateFrequencyDisclaimer />
+    </Container>
+}
 
 export const OptionsExposureComponent = (props: { symbol: string, cachedDates: string[] }) => {
     const { symbol, cachedDates } = props;

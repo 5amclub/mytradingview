@@ -150,12 +150,14 @@ export enum DexGexType {
   'DEX' = 'DEX',
   'GEX' = 'GEX',
   'OI' = 'OI',
-  'VOLUME' = 'VOLUME'
+  'VOLUME' = 'VOLUME',
+  'DEXGEX' = 'DEXGEX',
+  'OIVOLUME' = 'OIVOLUME'
 }
 
 export enum DataModeType {
-  'CBOE' = 'CBOE', 
-  'TRADIER' = 'TRADIER', 
+  'CBOE' = 'CBOE',
+  'TRADIER' = 'TRADIER',
   'HISTORICAL' = 'HISTORICAL'
 }
 

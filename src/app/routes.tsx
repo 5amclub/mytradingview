@@ -29,6 +29,7 @@ const pages = [
     { title: 'Trades', href: '/trades' },
     { title: 'Option analyzer', href: '/options/analyze' },
     { title: 'Option analyzer SPX', href: '/options/analyze-spx' },
+    { title: 'Option analyzer Table', href: '/options/analyze-options-table' },
     { title: 'Option pricing', href: '/options/pricing' },
     { title: 'History', href: '/history' },
     { title: 'Seasonal', href: '/seasonal' },

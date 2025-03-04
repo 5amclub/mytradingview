@@ -57,9 +57,10 @@ export const GreeksExposureTable = (props: { exposureData: { [key: number]: Summ
         </TableHead>
         <TableBody>
           {Object.entries(exposureData).map(([key, value]) => (
-            <TableRow>
+            <TableRow key={key}>
               {value.map((v) => (
                 <TableCell
+                  key={v.calls}
                   align='center'
                   sx={{
                     color: getValueColor(v.calls),
@@ -81,6 +82,7 @@ export const GreeksExposureTable = (props: { exposureData: { [key: number]: Summ
               </TableCell>
               {value.map((v) => (
                 <TableCell
+                  key={v.puts}
                   align='center'
                   sx={{
                     color: getValueColor(v.calls),

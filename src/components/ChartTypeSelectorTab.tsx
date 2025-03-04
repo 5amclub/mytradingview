@@ -1,6 +1,6 @@
 import { TickerSearchDialog } from "@/components/TickerSearchDialog";
 import { DataModeType, DexGexType } from "@/lib/types";
-import { Tabs, Tab, Box, FormControl, InputLabel, MenuItem, Paper, Select } from "@mui/material";
+import { Tabs, Tab, Box, FormControl, InputLabel, MenuItem, Paper, Select, Button } from "@mui/material";
 
 export const ChartTypeSelectorTab = (props: { tab: DexGexType; onChange: (v: DexGexType) => void }) => {
     return <Tabs
@@ -28,7 +28,7 @@ export const ChartTypeSelectorTab2 = (props: { tab: DexGexType; onChange: (v: De
     </Tabs>
 }
 
-const dteOptions = [7, 
+const dteOptions = [7,
     30,
     50,
     90,

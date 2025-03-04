@@ -8,7 +8,7 @@ import { BarChart, ChartsText, ChartsReferenceLine } from "@mui/x-charts"
 const ghUrl = process.env.GH_REPO_URL || 'github.com/mnsrulz/mytradingview';
 const colorCodes = getColorPallete();
 
-const xAxixFormatter = (datasetType: DexGexType, v: number) => {
+export const xAxixFormatter = (datasetType: DexGexType, v: number) => {
     if (datasetType == 'GEX' && v < 0) {
         return `-${humanAbsCurrencyFormatter(v)}`;
     }
@@ -78,6 +78,7 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
     const gammaOrDelta = GreeksChartLabelMapping[exposureType]
     const title = `$${symbol.toUpperCase()} ${gammaOrDelta} (${dte} DTE)`;
     return <Box>
+        {/* <pre>{JSON.stringify(exposureData, null, 2)}</pre> */}
         <Typography variant="h6" align="center">{title}</Typography>
         <BarChart
             loading={!isLoaded}

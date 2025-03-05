@@ -56,6 +56,7 @@ const mapExposureDataCallsAndPuts = (exposureData: ExposureDataType, type: DexGe
 function processExposureData(strikes: number[], dexData: SummedData[], gexData: SummedData[], oiData: SummedData[], volumeData: SummedData[]) {
   const exposureData: { [key: number]: SummedData[] } = {};
 
+
   for (const strike of strikes) {
     exposureData[strike] = [];
   }
@@ -83,7 +84,7 @@ const exportToCsv = (exposureData: { [key: number]: SummedData[] }) => {
   let csv =
     'DEX (calls),GEX (calls),OI (calls),VOLUME (calls),Strike Price,DEX (puts),GEX (puts),OI (puts),VOLUME (puts)\n';
 
-  for (const [key, value] of Object.entries(exposureData)) {
+  for (const [key, value] of Object.entries(exposureData).sort((a, b) => Number(b[0]) - Number(a[0]))) {
     let content = '';
     for (const data of value) {
       content += xAxixFormatter(data.exposureType as DexGexType, data.calls) + ',';

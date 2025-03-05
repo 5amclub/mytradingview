@@ -99,6 +99,7 @@ export const GreeksExposureTable = (props: { exposureData: { [key: number]: Summ
                       py: 0.5
                     }}
                   >{xAxixFormatter(v.exposureType as DexGexType, v.puts)}</TableCell>
+                  // >{v.puts}</TableCell>
                 ))}
               </TableRow>
             ))}

@@ -1,13 +1,15 @@
 'use client';
 import { ExposureDataType, useOptionExposure } from "@/lib/hooks";
 import { DataModeType, DexGexType } from "@/lib/types";
-import { Button, Container, LinearProgress, Link, Paper } from "@mui/material";
+import { Alert, Button, Container, Grid, LinearProgress, Link, Paper, Stack, Typography } from "@mui/material";
 import { parseAsInteger, parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 import { DteStrikeSelector } from "./ChartTypeSelectorTab";
 import { GridColDef } from "@mui/x-data-grid";
 import { GreeksExposureTable } from "./GreeksExposureTable";
 import { xAxixFormatter } from "./GreeksExposureChart";
+import React from "react";
+import { Kaushan_Script } from "next/font/google";
 
 type Props = {}
 
@@ -28,14 +30,25 @@ const mapExposureDataCallsAndPuts = (exposureData: ExposureDataType, type: DexGe
   const putsSum = new Array(exposureData.strikes.length).fill(0);
 
   exposureData.items.forEach((item, index) => {
-    // Assuming even indices are calls and odd indices are puts
-    if (index % 2 === 0) { // Calls
+    if (type !== DexGexType.GEX) {
+      // Assuming even indices are calls and odd indices are puts
+      if (index % 2 === 0) { // Calls
+        item.data.forEach((value, i) => {
+          callsSum[i] += value;
+        });
+      } else { // Puts (stored as negative values)
+        item.data.forEach((value, i) => {
+          putsSum[i] += Math.abs(value); // Convert to positive for summing
+        });
+      }
+    } else {
+      // Assuming even indices are calls and odd indices are puts
       item.data.forEach((value, i) => {
-        callsSum[i] += value;
-      });
-    } else { // Puts (stored as negative values)
-      item.data.forEach((value, i) => {
-        putsSum[i] += Math.abs(value); // Convert to positive for summing
+        if (value > 0) {
+          callsSum[i] += value;
+        } else {
+          putsSum[i] += value; // Convert to positive for summing
+        }
       });
     }
   });
@@ -55,6 +68,7 @@ const mapExposureDataCallsAndPuts = (exposureData: ExposureDataType, type: DexGe
 
 function processExposureData(strikes: number[], dexData: SummedData[], gexData: SummedData[], oiData: SummedData[], volumeData: SummedData[]) {
   const exposureData: { [key: number]: SummedData[] } = {};
+
 
   for (const strike of strikes) {
     exposureData[strike] = [];
@@ -83,7 +97,7 @@ const exportToCsv = (exposureData: { [key: number]: SummedData[] }) => {
   let csv =
     'DEX (calls),GEX (calls),OI (calls),VOLUME (calls),Strike Price,DEX (puts),GEX (puts),OI (puts),VOLUME (puts)\n';
 
-  for (const [key, value] of Object.entries(exposureData)) {
+  for (const [key, value] of Object.entries(exposureData).sort((a, b) => Number(b[0]) - Number(a[0]))) {
     let content = '';
     for (const data of value) {
       content += xAxixFormatter(data.exposureType as DexGexType, data.calls) + ',';
@@ -101,6 +115,22 @@ const exportToCsv = (exposureData: { [key: number]: SummedData[] }) => {
   return csv;
 }
 
+export const getValueColor = (value: number) => {
+  if (value === 0) return "#666";
+  return value > 0 ? "#00c853" : "#ff1744";
+};
+
+// Get background color for cells
+export const getCellBackground = (value: number, isCall: boolean) => {
+  if (value === 0) return "transparent";
+
+  if (isCall) {
+    return value > 0 ? "rgba(0, 200, 83, 0.1)" : "rgba(255, 23, 68, 0.1)";
+  } else {
+    return value > 0 ? "rgba(0, 200, 83, 0.1)" : "rgba(255, 23, 68, 0.1)";
+  }
+};
+
 export const OptionsTableComponent = (props: { symbol: string, cachedDates: string[] }) => {
   const { symbol, cachedDates } = props;
   const [historicalDate, setHistoricalDate] = useState(cachedDates.at(-1) || '');
@@ -115,10 +145,58 @@ export const OptionsTableComponent = (props: { symbol: string, cachedDates: stri
 
   if (!exposureDataDex || !exposureDataGex || !exposureDataOI || !exposureDataVolume) return <LinearProgress />;
 
+  const totalDEX = mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX).reduce((acc, cur) => {
+    acc.calls += cur.calls
+    acc.puts += cur.puts
+    return acc
+  }, { strike: 0, calls: 0, puts: 0 })
+
+  const dexRatio = totalDEX.puts !== 0 ? (totalDEX.calls / totalDEX.puts).toFixed(3) : "N/A";
+
   return (
     <Container>
+      {!isLoadedDex && !isLoadedGex && !isLoadedOI && !isLoadedVolume &&
+        <Stack sx={{ width: '100%', marginBottom: '0.5rem' }} spacing={1}>
+          {hasErrorDex && <Alert severity="error">Failed to fetch <strong>DEX</strong>.</Alert>}
+          {hasErrorGex && <Alert severity="error">Failed to fetch <strong>GEX</strong>.</Alert>}
+          {hasErrorOI && <Alert severity="error">Failed to fetch <strong>OPEN INTERESTS</strong>.</Alert>}
+          {hasErrorVolume && <Alert severity="error">Failed to fetch <strong>VOLUME</strong>.</Alert>}
+        </Stack>
+      }
       <DteStrikeSelector dte={dte} strikeCounts={strikeCounts} setDte={setDte} setStrikesCount={setStrikesCount} symbol={symbol} dataMode={dataMode} setDataMode={setDataMode} hasHistoricalData={cachedDates.length > 0} />
-      <GreeksExposureTable exposureData={processExposureData(exposureDataDex.strikes, mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX), mapExposureDataCallsAndPuts(exposureDataGex, DexGexType.GEX), mapExposureDataCallsAndPuts(exposureDataOI, DexGexType.OI), mapExposureDataCallsAndPuts(exposureDataVolume, DexGexType.VOLUME))} />
+      <Grid container spacing={2} sx={{ mt: '0.5rem' }}>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{
+            p: 2,
+            borderRadius: 2,
+          }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Call/Put DEX Ratio
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: getValueColor(exposureDataDex.spotPrice)
+            }}>
+              ${exposureDataDex.spotPrice.toFixed(2)}
+            </Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{
+            p: 2,
+            borderRadius: 2,
+          }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Spot Price
+            </Typography>
+            <Typography variant="h6" sx={{
+              color: dexRatio !== "N/A" && parseFloat(dexRatio) > 1 ? "#00c853" : "#ff1744"
+            }}>
+              {dexRatio}
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+      {isLoadedDex && isLoadedGex && isLoadedOI && isLoadedVolume && <GreeksExposureTable exposureData={processExposureData(exposureDataDex.strikes, mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX), mapExposureDataCallsAndPuts(exposureDataGex, DexGexType.GEX), mapExposureDataCallsAndPuts(exposureDataOI, DexGexType.OI), mapExposureDataCallsAndPuts(exposureDataVolume, DexGexType.VOLUME))} />}
       <Paper sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'end', padding: '5px', marginBottom: '2rem' }}>
         <Link
           component={Button}

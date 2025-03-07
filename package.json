@@ -36,11 +36,13 @@
     "lodash.debounce": "^4.0.8",
     "lru-cache": "^11.0.2",
     "match-sorter": "^6.3.4",
+    "material-ui-popup-state": "^5.3.3",
     "nanoid": "^5.0.9",
     "next": "14.2.2",
     "next-auth": "^5.0.0-beta.16",
     "numeral": "^2.0.6",
     "nuqs": "^1.17.8",
+    "prisma": "^5.12.1",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.2",
@@ -52,8 +54,7 @@
     "sort-by": "^1.2.0",
     "uplot": "^1.6.31",
     "uplot-react": "^1.2.2",
-    "yahoo-finance2": "^2.12.3",
-    "prisma": "^5.12.1"
+    "yahoo-finance2": "^2.12.3"
   },
   "devDependencies": {
     "@types/autosuggest-highlight": "^3.2.3",

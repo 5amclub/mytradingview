@@ -1,20 +1,21 @@
 'use client'
-import * as React from 'react';
 import Box from '@mui/material/Box';
-import Link from 'next/link';
 import Typography from '@mui/material/Typography';
+import Link from 'next/link';
+import * as React from 'react';
 import {
-    MemoryRouter,
     matchPath,
+    MemoryRouter,
     useLocation,
 } from 'react-router-dom';
 
-import { StaticRouter } from 'react-router-dom/server';
-import { Button, AppBar, Container, IconButton, Menu, MenuItem, Toolbar, Tooltip } from '@mui/material';
-import { forwardRef, Ref, useState } from 'react';
-import MenuIcon from '@mui/icons-material/Menu';
 import AccountCircle from '@mui/icons-material/AccountCircle';
-import { signIn, signOut, useSession } from 'next-auth/react'
+import MenuIcon from '@mui/icons-material/Menu';
+import { AppBar, Button, Container, IconButton, Menu, MenuItem, Toolbar, Tooltip } from '@mui/material';
+import PopupState, { bindMenu, bindTrigger } from 'material-ui-popup-state';
+import { signIn, signOut } from 'next-auth/react';
+import { forwardRef, Ref, useState } from 'react';
+import { StaticRouter } from 'react-router-dom/server';
 
 const NonPrefetchLink = forwardRef((props: any, ref: Ref<HTMLAnchorElement>) => <Link ref={ref} prefetch={false} {...props} />);
 NonPrefetchLink.displayName = 'NonPrefetchLink';
@@ -28,8 +29,13 @@ const pages = [
     { title: 'Home', href: '/' },
     { title: 'Trades', href: '/trades' },
     { title: 'Option analyzer', href: '/options/analyze' },
-    { title: 'Option analyzer SPX', href: '/options/analyze-spx' },
-    { title: 'Option analyzer Table', href: '/options/analyze-options-table' },
+    {
+        title: 'Option analyzer 2', href: '', children: [
+            { title: 'Option analyzer 2', href: '/options/analyze-2' },
+            { title: 'Option analyzer NET Gamma', href: '/options/analyze-net-gamma' },
+            { title: 'Option analyzer Table', href: '/options/analyze-options-table' },
+        ]
+    },
     { title: 'Option pricing', href: '/options/pricing' },
     { title: 'History', href: '/history' },
     { title: 'Seasonal', href: '/seasonal' },
@@ -105,6 +111,18 @@ export default function TabsRouter(props: { isAuthenticated: boolean }) {
     // const session = useSession();
     const { isAuthenticated } = props;
 
+    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+    const open = Boolean(anchorEl);
+
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
+
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
+
     const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorElNav(event.currentTarget);
     };
@@ -170,14 +188,48 @@ export default function TabsRouter(props: { isAuthenticated: boolean }) {
                         </Box>
                         <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
                             {pages.map((page) => (
-                                <Button
-                                    key={page.title}
-                                    // onClick={handleCloseNavMenu}
-                                    href={page.href}
-                                    LinkComponent={NonPrefetchLink}
-                                    sx={{ my: 2, color: 'white', display: 'block' }}>
-                                    {page.title}
-                                </Button>
+                                <>
+                                    {!page.children && (
+                                        <Button
+                                            key={page.title}
+                                            // onClick={handleCloseNavMenu}
+                                            href={page.href}
+                                            LinkComponent={NonPrefetchLink}
+                                            sx={{ my: 2, color: 'white', display: 'block' }}>
+                                            {page.title}
+                                        </Button>
+                                    )}
+
+                                    {page.children && (
+                                        <PopupState variant="popover" popupId={page.title}>
+                                            {(popupState) => (
+                                                <React.Fragment>
+                                                    <Button
+                                                        key={page.title}
+                                                        sx={{ my: 2, color: 'white', display: 'block' }}
+                                                        {...bindTrigger(popupState)}
+                                                    >
+                                                        {page.title}
+                                                    </Button>
+                                                    <Menu {...bindMenu(popupState)}>
+                                                        {page.children.map((child) => (
+                                                            <MenuItem onClick={popupState.close}>
+                                                                <Link
+                                                                    key={child.title}
+                                                                    style={{ textDecoration: "none", color: "black" }}
+                                                                    href={child.href}
+                                                                    {...bindTrigger(popupState)}
+                                                                >
+                                                                    {child.title}
+                                                                </Link>
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Menu>
+                                                </React.Fragment>
+                                            )}
+                                        </PopupState>
+                                    )}
+                                </>
                             ))}
                         </Box>
 
@@ -218,6 +270,6 @@ export default function TabsRouter(props: { isAuthenticated: boolean }) {
                     </Toolbar>
                 </Container>
             </AppBar>
-        </Router>
+        </Router >
     );
 }

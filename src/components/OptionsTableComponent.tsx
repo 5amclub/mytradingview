@@ -24,7 +24,7 @@ export type SummedData = {
   strike?: number
 }
 
-const mapExposureDataCallsAndPuts = (exposureData: ExposureDataType, type: DexGexType): SummedData[] => {
+export const mapExposureDataCallsAndPuts = (exposureData: ExposureDataType, type: DexGexType): SummedData[] => {
   const summedData: SummedData[] = [];
   const callsSum = new Array(exposureData.strikes.length).fill(0);
   const putsSum = new Array(exposureData.strikes.length).fill(0);

@@ -5,6 +5,7 @@ import { DexGexType } from "@/lib/types";
 import { calculateChartHeight, calculateLeftMargin } from "@/lib/utils";
 import { Box, Typography } from "@mui/material";
 import { BarChart, ChartsText, ChartsReferenceLine } from "@mui/x-charts"
+import React from "react";
 const ghUrl = process.env.GH_REPO_URL || 'github.com/mnsrulz/mytradingview';
 const colorCodes = getColorPallete();
 
@@ -17,7 +18,7 @@ export const xAxixFormatter = (datasetType: DexGexType, v: number) => {
 
 const GreeksChartLabelMapping = {
     'DEX': 'ABS Delta Exposure',
-    'GEX': 'NET Gamma Exposure',
+    'GEX': 'ABS Gamma Exposure',
     'OI': 'Open interest',
     'VOLUME': 'Volume',
     'DEXGEX': 'DEXGEX',
@@ -66,8 +67,8 @@ const CallPutWallLine = (props: { callWall: number, putWall: number, spotPriceLi
 }
 
 
-export const GreeksExposureChart = (props: { exposureData: ExposureDataType, skipAnimation?: boolean, symbol: string, dte: number, exposureType: DexGexType, isLoaded: boolean }) => {
-    const { symbol, exposureType, dte, exposureData, skipAnimation, isLoaded } = props;
+export const GreeksExposureChart = (props: { exposureData: ExposureDataType, skipAnimation?: boolean, symbol: string, dte: number, exposureType: DexGexType, isLoaded: boolean, isNet?: boolean }) => {
+    const { symbol, exposureType, dte, exposureData, skipAnimation, isLoaded, isNet = false } = props;
     const { strikes, expirations, items, maxPosition, spotPrice, callWall, putWall } = exposureData;
     // debugger;
     // const emaData = { "ema21d": 73.311932116876, "ema9d": 71.9165385595376 }
@@ -76,9 +77,27 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
     const maxStrike = Math.max(...strikes);
     const leftMarginValue = calculateLeftMargin(maxStrike);
     const gammaOrDelta = GreeksChartLabelMapping[exposureType]
-    const title = `$${symbol.toUpperCase()} ${gammaOrDelta} (${dte} DTE)`;
+    const title = `$${symbol.toUpperCase()} ${isNet && exposureType === DexGexType.GEX ? gammaOrDelta.replace("ABS", "NET") : gammaOrDelta} (${dte} DTE)`;
+
+    const [exposureDataItems, setExposureDataItems] = React.useState<{ expiration: string; data: number[] }[]>([])
+
+    React.useEffect(() => {
+        if (isNet && exposureType === DexGexType.GEX) {
+            let data: number[] = []
+            strikes.forEach((s, i) => {
+                let value = 0;
+                items.forEach((item) => {
+                    value += item.data[i]
+                })
+                data.push(value)
+            })
+            setExposureDataItems([{ expiration: "", data: data }])
+        } else {
+            setExposureDataItems(items)
+        }
+    }, [exposureData])
+
     return <Box>
-        {/* <pre>{JSON.stringify(exposureData, null, 2)}</pre> */}
         <Typography variant="h6" align="center">{title}</Typography>
         <BarChart
             loading={!isLoaded}
@@ -88,7 +107,7 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
             tooltip={{
                 trigger: 'none'
             }}
-            series={items.map((j, ix) => {
+            series={exposureDataItems.map((j, ix) => {
                 return { data: j.data, stack: 'A', color: colorCodes[expirations.indexOf(j.expiration)] }
             })}
             yAxis={[{
@@ -106,7 +125,7 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
                 valueFormatter: (v: number) => xAxixFormatter(props.exposureType, v)
             }]}
             layout="horizontal"
-            slotProps={{
+            slotProps={!isNet ? {
                 legend: {
                     seriesToDisplay: expirations.map(j => {
                         return {
@@ -128,7 +147,7 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
                     markGap: 2,
                     itemGap: 2,
                 }
-            }}
+            } : {}}
         >
             <ChartsText x="25%" y="5%" style={{ textAnchor: 'middle' }} fill="grey" text="CALLS" opacity="0.2" />
             <ChartsText x="75%" y="5%" style={{ textAnchor: 'middle' }} fill="grey" text="PUTS" opacity="0.2" />

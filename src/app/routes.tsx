@@ -213,7 +213,7 @@ export default function TabsRouter(props: { isAuthenticated: boolean }) {
                                                     </Button>
                                                     <Menu {...bindMenu(popupState)}>
                                                         {page.children.map((child) => (
-                                                            <MenuItem onClick={popupState.close}>
+                                                            <MenuItem onClick={popupState.close} key={child.title}>
                                                                 <Link
                                                                     key={child.title}
                                                                     style={{ textDecoration: "none", color: "black" }}

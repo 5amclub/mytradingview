@@ -188,7 +188,7 @@ export default function TabsRouter(props: { isAuthenticated: boolean }) {
                         </Box>
                         <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
                             {pages.map((page) => (
-                                <>
+                                <div key={page.title}>
                                     {!page.children && (
                                         <Button
                                             key={page.title}
@@ -229,7 +229,7 @@ export default function TabsRouter(props: { isAuthenticated: boolean }) {
                                             )}
                                         </PopupState>
                                     )}
-                                </>
+                                </div>
                             ))}
                         </Box>
 

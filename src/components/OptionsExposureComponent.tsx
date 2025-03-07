@@ -51,7 +51,7 @@ export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: 
                     borderRadius: 2,
                 }}>
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Call/Put DEX Ratio
+                        Spot Price
                     </Typography>
                     <Typography variant="h6" sx={{
                         color: getValueColor(exposureDataDex.spotPrice)
@@ -66,7 +66,7 @@ export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: 
                     borderRadius: 2,
                 }}>
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Spot Price
+                        Call/Put DEX Ratio
                     </Typography>
                     <Typography variant="h6" sx={{
                         color: dexRatio !== "N/A" && parseFloat(dexRatio) > 1 ? "#00c853" : "#ff1744"

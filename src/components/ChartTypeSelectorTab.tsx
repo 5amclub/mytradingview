@@ -28,7 +28,10 @@ export const ChartTypeSelectorTab2 = (props: { tab: DexGexType; onChange: (v: De
     </Tabs>
 }
 
-const dteOptions = [7,
+const dteOptions = [0,
+    1,
+    3,
+    7,
     30,
     50,
     90,

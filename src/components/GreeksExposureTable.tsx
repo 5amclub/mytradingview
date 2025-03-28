@@ -1,12 +1,31 @@
-import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
-import React from 'react'
-import { SummedData } from './OptionsTableComponent'
-import { xAxixFormatter } from './GreeksExposureChart'
 import { DexGexType } from '@/lib/types'
-import _ from 'lodash'
+import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
+import React from 'react'
+import { xAxixFormatter } from './GreeksExposureChart'
+import { SummedData } from './OptionsTableComponent'
 
 export const GreeksExposureTable = (props: { exposureData: { [key: number]: SummedData[] } }) => {
   const { exposureData } = props
+  const [data, setData] = React.useState<[string, SummedData[]][] | null>(null)
+
+
+  React.useEffect(() => {
+    if (!exposureData) return
+
+    setData(null)
+
+    const sorted = Object.entries(exposureData)
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+
+    const clear = setTimeout(() => {
+      setData(sorted)
+    }, 300)
+
+
+    return () => {
+      clearTimeout(clear)
+    }
+  }, [exposureData])
 
   const getValueColor = (value: number) => {
     if (value === 0) return "#666";
@@ -26,40 +45,39 @@ export const GreeksExposureTable = (props: { exposureData: { [key: number]: Summ
 
   return (
     <TableContainer component={Paper} sx={{ marginTop: 2, marginBottom: 2 }}>
-      <Table>
-        <TableHead sx={{ height: '20px' }}>
-          <TableRow sx={{ backgroundColor: '#0D47A1' }}>
-            <TableCell colSpan={4} align="center" sx={{ color: 'white', borderBottom: 'none', py: 0.5 }}>
-              <Typography variant="subtitle1" fontWeight="bold">CALLS</Typography>
-            </TableCell>
-            <TableCell align="center" sx={{ color: 'white', borderBottom: 'none', py: 0.5 }}>
-              <Typography variant="subtitle1" fontWeight="bold">STRIKE</Typography>
-            </TableCell>
-            <TableCell colSpan={4} align="center" sx={{ color: 'white', borderBottom: 'none', py: 0.5 }}>
-              <Typography variant="subtitle1" fontWeight="bold">PUTS</Typography>
-            </TableCell>
-          </TableRow>
-          <TableRow sx={{ backgroundColor: '#0D47A1' }}>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>DEX</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>GEX</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>OI</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>VOLUME</TableCell>
-            <TableCell align="center" sx={{
-              color: 'white',
-              py: 0.5,
-              backgroundColor: '#1565C0',
-              fontWeight: 'bold'
-            }}>Price</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>DEX</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>GEX</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>OI</TableCell>
-            <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>VOLUME</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {exposureData && Object.entries(exposureData)
-            .sort((a, b) => Number(b[0]) - Number(a[0]))
-            .map(([key, value]) => (
+      {data && (
+        <Table>
+          <TableHead sx={{ height: '20px' }}>
+            <TableRow sx={{ backgroundColor: '#0D47A1' }}>
+              <TableCell colSpan={4} align="center" sx={{ color: 'white', borderBottom: 'none', py: 0.5 }}>
+                <Typography variant="subtitle1" fontWeight="bold">CALLS</Typography>
+              </TableCell>
+              <TableCell align="center" sx={{ color: 'white', borderBottom: 'none', py: 0.5 }}>
+                <Typography variant="subtitle1" fontWeight="bold">STRIKE</Typography>
+              </TableCell>
+              <TableCell colSpan={4} align="center" sx={{ color: 'white', borderBottom: 'none', py: 0.5 }}>
+                <Typography variant="subtitle1" fontWeight="bold">PUTS</Typography>
+              </TableCell>
+            </TableRow>
+            <TableRow sx={{ backgroundColor: '#0D47A1' }}>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>DEX</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>GEX</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>OI</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>VOLUME</TableCell>
+              <TableCell align="center" sx={{
+                color: 'white',
+                py: 0.5,
+                backgroundColor: '#1565C0',
+                fontWeight: 'bold'
+              }}>Price</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>DEX</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>GEX</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>OI</TableCell>
+              <TableCell align="center" sx={{ color: 'white', py: 0.5 }}>VOLUME</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.map(([key, value]) => (
               <TableRow key={key}>
                 {value.map((v) => (
                   <TableCell
@@ -103,8 +121,8 @@ export const GreeksExposureTable = (props: { exposureData: { [key: number]: Summ
                 ))}
               </TableRow>
             ))}
-        </TableBody>
-      </Table>
+          </TableBody>
+        </Table>)}
     </TableContainer>
   )
 }

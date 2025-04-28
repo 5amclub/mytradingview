@@ -4,11 +4,20 @@ import { DataModeType, DexGexType } from "@/lib/types";
 import { Box, Container, Grid, LinearProgress, Paper, Slider, Stack, Typography } from "@mui/material";
 import dayjs from "dayjs";
 import { parseAsInteger, parseAsStringEnum, useQueryState } from "nuqs";
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense, lazy } from "react";
 import { ChartTypeSelectorTab, ChartTypeSelectorTab2, DteStrikeSelector } from "./ChartTypeSelectorTab";
-import { GreeksExposureChart } from "./GreeksExposureChart";
 import { UpdateFrequencyDisclaimer } from "./UpdateFrequencyDisclaimer";
 import { getValueColor, mapExposureDataCallsAndPuts } from "./OptionsTableComponent";
+
+// Lazy load the GreeksExposureChart to improve initial load time
+const GreeksExposureChart = lazy(() => import('./GreeksExposureChart').then(module => ({ default: module.GreeksExposureChart })));
+
+// Simple fallback component for lazy loading
+const ChartSkeleton = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+    <LinearProgress sx={{ width: '100%' }} />
+  </Box>
+);
 
 export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: string[] }) => {
     const { symbol, cachedDates } = props;
@@ -17,30 +26,77 @@ export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: 
     const [strikeCounts, setStrikesCount] = useQueryState('sc', parseAsInteger.withDefault(30));
     const [exposureTab, setexposureTab] = useQueryState<DexGexType>('tab', parseAsStringEnum<DexGexType>(Object.values(DexGexType)).withDefault(DexGexType.DEXGEX));
     const [dataMode, setDataMode] = useQueryState<DataModeType>('mode', parseAsStringEnum<DataModeType>(Object.values(DataModeType)).withDefault(DataModeType.CBOE));
-    const { exposureData: exposureDataDex, isLoaded: isLoadedDex, hasError: hasErrorDex } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.DEX, dataMode, historicalDate);
-    const { exposureData: exposureDataGex, isLoaded: isLoadedGex, hasError: hasErrorGex } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.GEX, dataMode, historicalDate);
-    const { exposureData: exposureDataOI, isLoaded: isLoadedOI, hasError: hasErrorOI } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.OI, dataMode, historicalDate);
-    const { exposureData: exposureDataVolume, isLoaded: isLoadedVolume, hasError: hasErrorVolume } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.VOLUME, dataMode, historicalDate);
+    
+    // Only fetch data for the currently visible tab to reduce initial load
+    const shouldLoadDex = useMemo(() => exposureTab === DexGexType.DEXGEX, [exposureTab]);
+    const shouldLoadGex = useMemo(() => exposureTab === DexGexType.DEXGEX, [exposureTab]);
+    const shouldLoadOI = useMemo(() => exposureTab === DexGexType.OIVOLUME, [exposureTab]);
+    const shouldLoadVolume = useMemo(() => exposureTab === DexGexType.OIVOLUME, [exposureTab]);
+    
+    // Add staggered loading with progressively increasing delays to prevent API overloading
+    const { exposureData: exposureDataDex, isLoaded: isLoadedDex, hasError: hasErrorDex } = useOptionExposure(
+        symbol, 
+        dte, 
+        strikeCounts, 
+        DexGexType.DEX, 
+        dataMode, 
+        historicalDate, 
+        shouldLoadDex ? 0 : null
+    );
+    
+    const { exposureData: exposureDataGex, isLoaded: isLoadedGex, hasError: hasErrorGex } = useOptionExposure(
+        symbol, 
+        dte, 
+        strikeCounts, 
+        DexGexType.GEX, 
+        dataMode, 
+        historicalDate, 
+        shouldLoadGex ? 300 : null
+    );
+    
+    const { exposureData: exposureDataOI, isLoaded: isLoadedOI, hasError: hasErrorOI } = useOptionExposure(
+        symbol, 
+        dte, 
+        strikeCounts, 
+        DexGexType.OI, 
+        dataMode, 
+        historicalDate, 
+        shouldLoadOI ? 300 : null
+    );
+    
+    const { exposureData: exposureDataVolume, isLoaded: isLoadedVolume, hasError: hasErrorVolume } = useOptionExposure(
+        symbol, 
+        dte, 
+        strikeCounts, 
+        DexGexType.VOLUME, 
+        dataMode, 
+        historicalDate, 
+        shouldLoadVolume ? 600 : null
+    );
 
-    if (!exposureDataDex || !exposureDataGex || !exposureDataOI || !exposureDataVolume) return <LinearProgress />;
+    // Memoize the total DEX calculation to prevent recalculation on rerenders
+    const totalDEX = useMemo(() => {
+        if (!exposureDataDex) return { calls: 0, puts: 0 };
+        return mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX).reduce((acc, cur) => {
+            acc.calls += cur.calls;
+            acc.puts += cur.puts;
+            return acc;
+        }, { strike: 0, calls: 0, puts: 0 });
+    }, [exposureDataDex]);
 
-    const startHistoricalAnimation = async () => {
-        const delayMs = 1000;
-        for (const d of cachedDates) {
-            setTimeout(() => {
-                setHistoricalDate(d);
-            }, delayMs);
-            await new Promise((r) => setTimeout(r, delayMs));
-        }
+    const dexRatio = useMemo(() => {
+        return totalDEX.puts !== 0 ? (totalDEX.calls / totalDEX.puts).toFixed(3) : "N/A";
+    }, [totalDEX]);
+
+    // Skip rendering if none of the required data is loaded
+    if (
+        (shouldLoadDex && !exposureDataDex) || 
+        (shouldLoadGex && !exposureDataGex) || 
+        (shouldLoadOI && !exposureDataOI) || 
+        (shouldLoadVolume && !exposureDataVolume)
+    ) {
+        return <LinearProgress />;
     }
-
-    const totalDEX = mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX).reduce((acc, cur) => {
-        acc.calls += cur.calls
-        acc.puts += cur.puts
-        return acc
-    }, { strike: 0, calls: 0, puts: 0 })
-
-    const dexRatio = totalDEX.puts !== 0 ? (totalDEX.calls / totalDEX.puts).toFixed(3) : "N/A";
 
     return <Container maxWidth="xl" sx={{ p: 0 }}>
         <DteStrikeSelector dte={dte} strikeCounts={strikeCounts} setDte={setDte} setStrikesCount={setStrikesCount} symbol={symbol} dataMode={dataMode} setDataMode={setDataMode} hasHistoricalData={cachedDates.length > 0} />
@@ -54,9 +110,9 @@ export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: 
                         Spot Price
                     </Typography>
                     <Typography variant="h6" sx={{
-                        color: getValueColor(exposureDataDex.spotPrice)
+                        color: exposureDataDex ? getValueColor(exposureDataDex.spotPrice) : 'inherit'
                     }}>
-                        ${exposureDataDex.spotPrice.toFixed(2)}
+                        ${exposureDataDex ? exposureDataDex.spotPrice.toFixed(2) : '--'}
                     </Typography>
                 </Paper>
             </Grid>
@@ -81,10 +137,32 @@ export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: 
             {exposureTab == DexGexType.DEXGEX &&
                 <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
                     <Box sx={{ m: 1, width: '100%' }}>
-                        {hasErrorDex ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataDex} dte={dte} symbol={symbol} exposureType={DexGexType.DEX} isLoaded={isLoadedDex} />}
+                        {hasErrorDex ? <i>Error occurred! Please try again...</i> : (
+                            exposureDataDex && <Suspense fallback={<ChartSkeleton />}>
+                                <GreeksExposureChart 
+                                    exposureData={exposureDataDex!} 
+                                    dte={dte} 
+                                    symbol={symbol} 
+                                    exposureType={DexGexType.DEX} 
+                                    isLoaded={isLoadedDex} 
+                                    skipAnimation={true}
+                                />
+                            </Suspense>
+                        )}
                     </Box>
                     <Box sx={{ m: 1, width: '100%' }}>
-                        {hasErrorGex ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataGex} dte={dte} symbol={symbol} exposureType={DexGexType.GEX} isLoaded={isLoadedGex} />}
+                        {hasErrorGex ? <i>Error occurred! Please try again...</i> : (
+                            exposureDataGex && <Suspense fallback={<ChartSkeleton />}>
+                                <GreeksExposureChart 
+                                    exposureData={exposureDataGex!} 
+                                    dte={dte} 
+                                    symbol={symbol} 
+                                    exposureType={DexGexType.GEX} 
+                                    isLoaded={isLoadedGex} 
+                                    skipAnimation={true}
+                                />
+                            </Suspense>
+                        )}
                     </Box>
                 </Stack>
             }
@@ -92,19 +170,38 @@ export const OptionsExposureComponent2 = (props: { symbol: string, cachedDates: 
             {exposureTab == DexGexType.OIVOLUME &&
                 <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
                     <Box sx={{ m: 1, width: '100%' }}>
-                        {hasErrorOI ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataOI} dte={dte} symbol={symbol} exposureType={DexGexType.OI} isLoaded={isLoadedOI} />}
+                        {hasErrorOI ? <i>Error occurred! Please try again...</i> : (
+                            exposureDataOI && <Suspense fallback={<ChartSkeleton />}>
+                                <GreeksExposureChart 
+                                    exposureData={exposureDataOI!} 
+                                    dte={dte} 
+                                    symbol={symbol} 
+                                    exposureType={DexGexType.OI} 
+                                    isLoaded={isLoadedOI} 
+                                    skipAnimation={true}
+                                />
+                            </Suspense>
+                        )}
                     </Box>
                     <Box sx={{ m: 1, width: '100%' }}>
-                        {hasErrorVolume ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureDataVolume} dte={dte} symbol={symbol} exposureType={DexGexType.VOLUME} isLoaded={isLoadedVolume} />}
+                        {hasErrorVolume ? <i>Error occurred! Please try again...</i> : (
+                            exposureDataVolume && <Suspense fallback={<ChartSkeleton />}>
+                                <GreeksExposureChart 
+                                    exposureData={exposureDataVolume!} 
+                                    dte={dte} 
+                                    symbol={symbol} 
+                                    exposureType={DexGexType.VOLUME} 
+                                    isLoaded={isLoadedVolume} 
+                                    skipAnimation={true}
+                                />
+                            </Suspense>
+                        )}
                     </Box>
                 </Stack>
             }
         </Paper>
         {dataMode == DataModeType.HISTORICAL && <Paper sx={{ px: 4 }}>
             <HistoricalDateSlider dates={cachedDates} onChange={(v) => setHistoricalDate(v)} currentValue={historicalDate} />
-            {/* <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
-            </Stack> */}
-            {/* <IconButton onClick={startHistoricalAnimation}><PlayIcon /></IconButton> */}
         </Paper>
         }
         <UpdateFrequencyDisclaimer />
@@ -119,31 +216,31 @@ export const OptionsExposureComponent = (props: { symbol: string, cachedDates: s
     const [exposureTab, setexposureTab] = useQueryState<DexGexType>('tab', parseAsStringEnum<DexGexType>(Object.values(DexGexType)).withDefault(DexGexType.DEX));
     const [dataMode, setDataMode] = useQueryState<DataModeType>('mode', parseAsStringEnum<DataModeType>(Object.values(DataModeType)).withDefault(DataModeType.CBOE));
     const { exposureData, isLoaded, hasError } = useOptionExposure(symbol, dte, strikeCounts, exposureTab, dataMode, historicalDate);
+    
     if (!exposureData) return <LinearProgress />;
-
-    const startHistoricalAnimation = async () => {
-        const delayMs = 1000;
-        for (const d of cachedDates) {
-            setTimeout(() => {
-                setHistoricalDate(d);
-            }, delayMs);
-            await new Promise((r) => setTimeout(r, delayMs));
-        }
-    }
 
     return <Container maxWidth="md" sx={{ p: 0 }}>
         <DteStrikeSelector dte={dte} strikeCounts={strikeCounts} setDte={setDte} setStrikesCount={setStrikesCount} symbol={symbol} dataMode={dataMode} setDataMode={setDataMode} hasHistoricalData={cachedDates.length > 0} />
         <Paper sx={{ mt: 2 }}>
             <ChartTypeSelectorTab tab={exposureTab} onChange={setexposureTab} />
             <Box sx={{ m: 1 }}>
-                {hasError ? <i>Error occurred! Please try again...</i> : <GreeksExposureChart exposureData={exposureData} dte={dte} symbol={symbol} exposureType={exposureTab} isLoaded={isLoaded} isNet={isNet} />}
+                {hasError ? <i>Error occurred! Please try again...</i> : (
+                    <Suspense fallback={<ChartSkeleton />}>
+                        <GreeksExposureChart 
+                            exposureData={exposureData} 
+                            dte={dte} 
+                            symbol={symbol} 
+                            exposureType={exposureTab} 
+                            isLoaded={isLoaded} 
+                            isNet={isNet} 
+                            skipAnimation={true}
+                        />
+                    </Suspense>
+                )}
             </Box>
         </Paper>
         {dataMode == DataModeType.HISTORICAL && <Paper sx={{ px: 4 }}>
             <HistoricalDateSlider dates={cachedDates} onChange={(v) => setHistoricalDate(v)} currentValue={historicalDate} />
-            {/* <Stack direction={'row'} spacing={2} sx={{ alignItems: "center" }}>
-            </Stack> */}
-            {/* <IconButton onClick={startHistoricalAnimation}><PlayIcon /></IconButton> */}
         </Paper>
         }
         <UpdateFrequencyDisclaimer />

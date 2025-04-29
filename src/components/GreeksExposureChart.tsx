@@ -47,6 +47,7 @@ const EmaIndicatorLine = (props: { strikes: number[], emaData?: { ema21d: number
 const CallPutWallLine = (props: { callWall: number, putWall: number, spotPriceLineValue: number }) => {
     const { callWall, putWall, spotPriceLineValue } = props;
     // debugger;
+    // debugger;
     if (callWall == putWall) {
         return <ChartsReferenceLine y={Number(callWall)} label={"WALL: $" + (callWall)}
             labelAlign={spotPriceLineValue == callWall ? "end" : "start"}
@@ -67,8 +68,8 @@ const CallPutWallLine = (props: { callWall: number, putWall: number, spotPriceLi
 }
 
 
-export const GreeksExposureChart = (props: { exposureData: ExposureDataType, skipAnimation?: boolean, symbol: string, dte: number, exposureType: DexGexType, isLoaded: boolean, isNet?: boolean }) => {
-    const { symbol, exposureType, dte, exposureData, skipAnimation, isLoaded, isNet = false } = props;
+export const GreeksExposureChart = (props: { exposureData: ExposureDataType, skipAnimation?: boolean, symbol: string, dte: number, exposureType: DexGexType, isLoading: boolean, isNet?: boolean }) => {
+    const { symbol, exposureType, dte, exposureData, skipAnimation, isLoading, isNet = false } = props;
     const { strikes, expirations, items, maxPosition, spotPrice, callWall, putWall } = exposureData;
     // debugger;
     // const emaData = { "ema21d": 73.311932116876, "ema9d": 71.9165385595376 }
@@ -77,7 +78,7 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
     const maxStrike = Math.max(...strikes);
     const leftMarginValue = calculateLeftMargin(maxStrike);
     const gammaOrDelta = GreeksChartLabelMapping[exposureType]
-    const title = `$${symbol.toUpperCase()} ${isNet && exposureType === DexGexType.GEX ? gammaOrDelta.replace("ABS", "NET") : gammaOrDelta} (${dte} DTE)`;
+    const title = `$${symbol.toUpperCase()} ${isNet && exposureType === DexGexType.GEX ? gammaOrDelta.replace("ABS", "NET") : gammaOrDelta} (${dte == -1 ? 'Custom' : dte} DTE)`;
 
     const [exposureDataItems, setExposureDataItems] = React.useState<{ expiration: string; data: number[] }[]>([])
 
@@ -100,7 +101,7 @@ export const GreeksExposureChart = (props: { exposureData: ExposureDataType, ski
     return <Box>
         <Typography variant="h6" align="center">{title}</Typography>
         <BarChart
-            loading={!isLoaded}
+            loading={isLoading}
             skipAnimation={skipAnimation}
             height={height}
             margin={{ left: leftMarginValue, right: 0 }}

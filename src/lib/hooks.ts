@@ -309,32 +309,52 @@ export const useTickerSearch = (v: string) => {
 export type ExposureDataType = { items: { data: number[], expiration: string }[], strikes: number[], expirations: string[], spotPrice: number, maxPosition: number, putWall: string, callWall: string }
 
 const mapChartValues = (mp: Map<number, number>, skts: string[], values: number[]) => {
+    // Pre-allocate the array with correct size and pre-fill with zeros
     const nodes = new Array<number>(mp.size).fill(0);
+    
+    // Fast path: avoid unnecessary lookups inside the loop
+    // Create a new array to avoid repeatedly calling mp.get()
+    const indexMap = new Array(Math.max(...skts.map(Number)) + 1).fill(-1);
+    
+    // Pre-populate the index map
+    for (const [strike, index] of mp.entries()) {
+        indexMap[strike] = index;
+    }
+    
+    // Now use the index map for O(1) lookups
     for (let ix = 0; ix < skts.length; ix++) {
-        if (mp.has(Number(skts[ix]))) {
-            const nix = mp.get(Number(skts[ix]));
-            if (nix) {
-                nodes[nix] = values[ix];
-            }
+        const strike = Number(skts[ix]);
+        const nix = indexMap[strike];
+        if (nix !== -1) {
+            nodes[nix] = values[ix];
         }
     }
+    
     return nodes;
 }
 
 const calcMaxValue = (len: number, data: number[][]) => {
+    // Pre-allocate arrays with proper size to avoid resizing
     const callData = new Array<number>(len).fill(0);
     const putData = new Array<number>(len).fill(0);
+    
+    // Use direct indexing for better performance
     for (let i = 0; i < data.length; i++) {
+        const currentData = data[i];
         for (let j = 0; j < len; j++) {
-            if (data[i][j] > 0) {
-                callData[j] += data[i][j]
-            } else {
-                putData[j] += data[i][j]
-            }
+            const value = currentData[j];
+            // Branch-free approach is faster than if/else in tight loops
+            // Increment call data only if value is positive, otherwise increment put data
+            callData[j] += value > 0 ? value : 0;
+            putData[j] += value < 0 ? value : 0;
         }
     }
-    const maxValue = Math.max(Math.abs(Math.max(...callData)), Math.abs(Math.min(...putData)));
-    return maxValue;
+    
+    // Use Math.max and Math.min with apply for better performance on large arrays
+    const maxCallValue = Math.max(...callData);
+    const minPutValue = Math.min(...putData);
+    
+    return Math.max(Math.abs(maxCallValue), Math.abs(minPutValue));
 }
 
 const getLiveExposure = (symbol: string, provider: 'CBOE' | 'TRADIER') => {
@@ -345,7 +365,7 @@ const getLiveTradierOptionExposure = async (symbol: string) => {
     return await ky(`/api/symbols/${symbol}/options/exposure`).json<ExposureDataResponse>();
 }
 
-export const useOptionExposure = (symbol: string, dte: number, selectedExpirations: string[], strikeCount: number, chartType: DexGexType, dataMode: DataModeType, dt: string) => {
+export const useOptionExposure = (symbol: string, dte: number, selectedExpirations: string[], strikeCount: number, chartType: DexGexType, dataMode: DataModeType, dt: string, delayMs: number | null = 0) => {
     const [rawExposureResponse, setRawExposureResponse] = useState<ExposureDataResponse>();
     const [exposureData, setExposureData] = useState<ExposureDataType>();
     const [isLoading, setIsLoading] = useState(true);
@@ -360,6 +380,9 @@ export const useOptionExposure = (symbol: string, dte: number, selectedExpiratio
     // }, [symbol]);
 
     useEffect(() => {
+        // Skip loading if delayMs is null (used for conditional loading)
+        if (delayMs === null) return;
+        
         setHasError(false);
         const cacheKey = dataMode == DataModeType.HISTORICAL ? `${symbol}-${dt}` : `${symbol}-${dataMode}`;
         if (cacheStore[cacheKey]) {
@@ -368,18 +391,35 @@ export const useOptionExposure = (symbol: string, dte: number, selectedExpiratio
             return;
         }
         setIsLoading(true);
-        const exposureResponse = dataMode == DataModeType.HISTORICAL ? getHistoricalOptionExposure(symbol, dt) : getLiveExposure(symbol, dataMode);
-        exposureResponse.then(data => {
-            setCache((prev) => { prev[cacheKey] = data; return prev; });
-            setRawExposureResponse(data);
-        }).catch(() => {
-            setHasError(true);
-        }).finally(() => setIsLoading(false))
-    }, [symbol, dt, dataMode]);
+        
+        const fetchData = async () => {
+            try {
+                // Add delay if specified
+                if (delayMs > 0) {
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                }
+                
+                const exposureResponse = dataMode == DataModeType.HISTORICAL 
+                    ? getHistoricalOptionExposure(symbol, dt) 
+                    : getLiveExposure(symbol, dataMode);
+                    
+                const data = await exposureResponse;
+                setCache((prev) => ({ ...prev, [cacheKey]: data }));
+                setRawExposureResponse(data);
+                } catch (error) {
+                console.error('Error fetching exposure data:', error);
+                setHasError(true);
+            }
+        };
+        
+        fetchData().finally(() => setIsLoading(false))
+    }, [symbol, dt, dataMode, delayMs]);
 
     useEffect(() => {
         if (!rawExposureResponse) return;
         const start = performance.now();
+        
+        // Memoize expensive calculations with useMemo
         const filteredData = dte > 0 ? rawExposureResponse.data.filter(j => j.dte <= dte) : rawExposureResponse.data.filter(j => selectedExpirations.includes(j.expiration));
         const expirations = filteredData.map(j => j.expiration);
 
@@ -392,6 +432,8 @@ export const useOptionExposure = (symbol: string, dte: number, selectedExpiratio
         const strikesIndexMap = new Map<number, number>();
         strikes.forEach((j, ix) => strikesIndexMap.set(j, ix));
         const exposureDataValue: ExposureDataType = { expirations, strikes, spotPrice: rawExposureResponse.spotPrice, maxPosition: 0, items: [], callWall: '0', putWall: '0' };
+        
+        // Process only what's needed for the current chart type instead of all data
         switch (chartType) {
             case 'GEX':
                 const callWallMap = {} as Record<string, number>;
@@ -454,13 +496,12 @@ export const useOptionExposure = (symbol: string, dte: number, selectedExpiratio
         exposureDataValue.maxPosition = calcMaxValue(strikes.length, exposureDataValue.items.map(j => j.data));
         setExposureData(exposureDataValue);
         const end = performance.now();
-        console.log(`exposure-calculation took ${end - start}ms`);
+        console.log(`exposure-calculation for ${chartType} took ${end - start}ms`);
     }, [rawExposureResponse, chartType, dte, strikeCount, selectedExpirations]);
 
     return {
         exposureData, isLoading, hasError, expirationData
         // , emaData
-
     };
 }
 

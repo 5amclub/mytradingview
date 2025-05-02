@@ -6,7 +6,7 @@ export type CachedReleasesType = {
 }
 
 const client = ky.create({
-    prefixUrl: 'https://mztrading-data.deno.dev',
+    prefixUrl: 'https://5amclub-mztrading.deno.dev/',
     headers: {
         'Accept': 'application/json'
     },

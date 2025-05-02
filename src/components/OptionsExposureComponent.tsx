@@ -520,7 +520,7 @@ export const OptionsExposureComponent = (props: { symbol: string, cachedDates: s
     const [strikeCounts, setStrikesCount] = useQueryState('sc', parseAsInteger.withDefault(30));
     const [exposureTab, setexposureTab] = useQueryState<DexGexType>('dgextab', parseAsStringEnum<DexGexType>(Object.values(DexGexType)).withDefault(DexGexType.DEX));
     const [dataMode, setDataMode] = useQueryState<DataModeType>('mode', parseAsStringEnum<DataModeType>(Object.values(DataModeType)).withDefault(DataModeType.CBOE));
-    const { exposureData, isLoading, hasError, expirationData } = useOptionExposure(symbol, dte, selectedExpirations, strikeCounts, exposureTab, dataMode, historicalDate);
+    const { exposureData, isLoading, hasError, expirationData } = useOptionExposure(symbol, dte, selectedExpirations, strikeCounts, exposureTab, dataMode, historicalDate, 300);
 
 
     const exposureChartContent = <Box sx={{ m: 1 }} minHeight={400}>{
@@ -531,12 +531,13 @@ export const OptionsExposureComponent = (props: { symbol: string, cachedDates: s
         ) : (
             exposureData && (
                 <GreeksExposureChart
-                    skipAnimation={printMode}
+                    skipAnimation={true}
                     exposureData={exposureData}
                     dte={dte}
                     symbol={symbol}
                     exposureType={exposureTab}
                     isLoading={isLoading}
+                    isNet={isNet}
                 />
             )
         )

@@ -134,14 +134,15 @@ export const getCellBackground = (value: number, isCall: boolean) => {
 export const OptionsTableComponent = (props: { symbol: string, cachedDates: string[] }) => {
   const { symbol, cachedDates } = props;
   const [historicalDate, setHistoricalDate] = useState(cachedDates.at(-1) || '');
+  const [selectedExpirations, setSelectedExpirations] = useState<string[]>([]);
   const [dte, setDte] = useQueryState('dte', parseAsInteger.withDefault(50));
   const [strikeCounts, setStrikesCount] = useQueryState('sc', parseAsInteger.withDefault(30));
   const [exposureTab, setexposureTab] = useQueryState<DexGexType>('tab', parseAsStringEnum<DexGexType>(Object.values(DexGexType)).withDefault(DexGexType.DEXGEX));
   const [dataMode, setDataMode] = useQueryState<DataModeType>('mode', parseAsStringEnum<DataModeType>(Object.values(DataModeType)).withDefault(DataModeType.CBOE));
-  const { exposureData: exposureDataDex, isLoaded: isLoadedDex, hasError: hasErrorDex } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.DEX, dataMode, historicalDate);
-  const { exposureData: exposureDataGex, isLoaded: isLoadedGex, hasError: hasErrorGex } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.GEX, dataMode, historicalDate);
-  const { exposureData: exposureDataOI, isLoaded: isLoadedOI, hasError: hasErrorOI } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.OI, dataMode, historicalDate);
-  const { exposureData: exposureDataVolume, isLoaded: isLoadedVolume, hasError: hasErrorVolume } = useOptionExposure(symbol, dte, strikeCounts, DexGexType.VOLUME, dataMode, historicalDate);
+  const { exposureData: exposureDataDex, isLoading: isLoadingDex, hasError: hasErrorDex } = useOptionExposure(symbol, dte, selectedExpirations, strikeCounts, DexGexType.DEX, dataMode, historicalDate, 300);
+  const { exposureData: exposureDataGex, isLoading: isLoadingGex, hasError: hasErrorGex } = useOptionExposure(symbol, dte, selectedExpirations, strikeCounts, DexGexType.GEX, dataMode, historicalDate, 300);
+  const { exposureData: exposureDataOI, isLoading: isLoadingOI, hasError: hasErrorOI } = useOptionExposure(symbol, dte, selectedExpirations, strikeCounts, DexGexType.OI, dataMode, historicalDate, 300);
+  const { exposureData: exposureDataVolume, isLoading: isLoadingVolume, hasError: hasErrorVolume } = useOptionExposure(symbol, dte, selectedExpirations, strikeCounts, DexGexType.VOLUME, dataMode, historicalDate, 300);
 
   if (!exposureDataDex || !exposureDataGex || !exposureDataOI || !exposureDataVolume) return <LinearProgress />;
 
@@ -155,7 +156,7 @@ export const OptionsTableComponent = (props: { symbol: string, cachedDates: stri
 
   return (
     <Container>
-      {!isLoadedDex && !isLoadedGex && !isLoadedOI && !isLoadedVolume &&
+      {isLoadingDex || isLoadingGex || isLoadingOI || isLoadingVolume &&
         <Stack sx={{ width: '100%', marginBottom: '0.5rem' }} spacing={1}>
           {hasErrorDex && <Alert severity="error">Failed to fetch <strong>DEX</strong>.</Alert>}
           {hasErrorGex && <Alert severity="error">Failed to fetch <strong>GEX</strong>.</Alert>}
@@ -163,7 +164,7 @@ export const OptionsTableComponent = (props: { symbol: string, cachedDates: stri
           {hasErrorVolume && <Alert severity="error">Failed to fetch <strong>VOLUME</strong>.</Alert>}
         </Stack>
       }
-      <DteStrikeSelector dte={dte} strikeCounts={strikeCounts} setDte={setDte} setStrikesCount={setStrikesCount} symbol={symbol} dataMode={dataMode} setDataMode={setDataMode} hasHistoricalData={cachedDates.length > 0} />
+      <DteStrikeSelector dte={dte} strikeCounts={strikeCounts} setDte={setDte} setStrikesCount={setStrikesCount} symbol={symbol} dataMode={dataMode} setDataMode={setDataMode} hasHistoricalData={cachedDates.length > 0} availableDates={[]} setCustomExpirations={setSelectedExpirations} />
       <Grid container spacing={2} sx={{ mt: '0.5rem' }}>
         <Grid item xs={12} md={4}>
           <Paper sx={{
@@ -196,7 +197,7 @@ export const OptionsTableComponent = (props: { symbol: string, cachedDates: stri
           </Paper>
         </Grid>
       </Grid>
-      {isLoadedDex && isLoadedGex && isLoadedOI && isLoadedVolume && <GreeksExposureTable exposureData={processExposureData(exposureDataDex.strikes, mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX), mapExposureDataCallsAndPuts(exposureDataGex, DexGexType.GEX), mapExposureDataCallsAndPuts(exposureDataOI, DexGexType.OI), mapExposureDataCallsAndPuts(exposureDataVolume, DexGexType.VOLUME))} />}
+      {isLoadingDex && isLoadingGex && isLoadingOI && isLoadingVolume && <GreeksExposureTable exposureData={processExposureData(exposureDataDex.strikes, mapExposureDataCallsAndPuts(exposureDataDex, DexGexType.DEX), mapExposureDataCallsAndPuts(exposureDataGex, DexGexType.GEX), mapExposureDataCallsAndPuts(exposureDataOI, DexGexType.OI), mapExposureDataCallsAndPuts(exposureDataVolume, DexGexType.VOLUME))} />}
       <Paper sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'end', padding: '5px', marginBottom: '2rem' }}>
         <Link
           component={Button}

@@ -1,11 +1,11 @@
 import { getHistoricalGreeksSummaryBySymbol } from "@/lib/mzDataService";
 import { OptionGreeksSummaryBySymbolResponse } from "@/lib/types";
-import { Box, FormControl, InputLabel, Select, MenuItem, useMediaQuery, useTheme, Dialog, DialogContent, DialogTitle, Stack, IconButton, LinearProgress, DialogActions, Tab, Tabs } from "@mui/material";
+import { Box, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, LinearProgress, Stack, Tab, Tabs, useMediaQuery, useTheme } from "@mui/material";
 // import { LineChart } from "@mui/x-charts";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import CloseIcon from '@mui/icons-material/Close'
-import { useState, useEffect } from "react";
 import { currencyCompactFormatter, numberFormatter } from "@/lib/formatters";
+import CloseIcon from '@mui/icons-material/Close';
+import { useEffect, useState } from "react";
+import { CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
 type SelectedOptionType = 'call_put_oi_ratio' | 'net_gamma' | 'call_put_dex_ratio' | 'call_put_volume_ratio'
 export const OptionsGreekReportBySymbolDialog = (props: { symbol: string, onClose: () => void, open: boolean }) => {
     const { onClose, open, symbol } = props;
@@ -101,14 +101,14 @@ export const OptionsGreekReportBySymbol = (props: { symbol: string, selectedOpti
             <CartesianGrid strokeDasharray="3 3" />
             <Legend verticalAlign="top" />
             <XAxis dataKey="dt"
-                tickFormatter={(value) => {
+                tickFormatter={(value: string) => {
                     const date = new Date(value);
                     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 }}
             />
             <YAxis yAxisId="left"
                 domain={['auto', 'auto']}
-                tickFormatter={(v) => {
+                tickFormatter={(v: number) => {
                     return v.toFixed(0)
                 }}
                 label={{
@@ -119,7 +119,7 @@ export const OptionsGreekReportBySymbol = (props: { symbol: string, selectedOpti
                 }} />
             <YAxis yAxisId="right" orientation="right"
                 domain={['auto', 'auto']}
-                tickFormatter={(v) => {
+                tickFormatter={(v: number) => {
                     return selectedOption == 'net_gamma' ? currencyCompactFormatter(v) : numberFormatter(v)
                 }}
                 label={{
